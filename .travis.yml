@@ -3,6 +3,6 @@ language: objective-c
 before_script:
    - gem install xcpretty --no-ri --no-rdoc
 script:
-  - xcodebuild test -workspace FCModel.xcworkspace -scheme FCModelTest -verbose -configuration Debug -sdk iphonesimulator7.0 -destination 'platform=iOS Simulator,name=iPhone Retina (4-inch),OS=latest'
+  - xcodebuild test -workspace FCModel.xcworkspace -scheme FCModelTest -verbose -configuration Debug -sdk iphonesimulator7.0 -destination 'platform=iOS Simulator,name=iPhone Retina (4-inch),OS=latest' | xcpretty -c
 notifications:
   email: false
