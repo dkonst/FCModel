@@ -1,7 +1,7 @@
 FCModel
 =======
 
-PLACEHOLDER FOR BUILD
+[![Build Status](https://travis-ci.org/dkonst/FCModel.svg?branch=master)](https://travis-ci.org/dkonst/FCModel)
 
 An alternative to Core Data for people who like having direct SQL access.
 
