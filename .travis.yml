@@ -1,0 +1,11 @@
+rvm: 1.9.3
+language: objective-c
+before_script:
+   - pod --version
+   - gem which cocoapods
+   - gem update cocoapods --no-ri --no-rdoc
+   - gem install xcpretty
+script:
+  - xcodebuild test -workspace FCModel.xcworkspace -scheme FCModelTest -verbose -configuration Debug -sdk iphonesimulator7.0 -destination 'platform=iOS Simulator,name=iPhone Retina (4-inch),OS=latest'
+notifications:
+  email: false
