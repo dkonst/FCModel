@@ -8,7 +8,6 @@
 
 #import <XCTest/XCTest.h>
 #import "FCModel.h"
-#import "FCModel+Testing.h"
 #import "SimpleModel.h"
 
 @interface FCModelTest_Tests : XCTestCase
@@ -26,7 +25,7 @@
 
 - (void)tearDown
 {
-    [self closeDatabase];
+    [FCModel closeDatabase];
     [super tearDown];
 }
 
@@ -54,16 +53,53 @@
 
 - (void)testDatabaseCloseFlushesCache
 {
-    SimpleModel *entity1 = [SimpleModel instanceWithPrimaryKey:@"a"];
-    entity1.name = @"Alice";
-    [entity1 save];
+    void *e1ptr;
+    @autoreleasepool {
+        SimpleModel *entity1 = [SimpleModel instanceWithPrimaryKey:@"a"];
+        entity1.name = @"Alice";
+        [entity1 save];
+        e1ptr = (__bridge void *)(entity1);
+        entity1 = nil;
+    }
     
-    [self closeDatabase];
+    XCTAssertTrue([FCModel closeDatabase]);
     [self openDatabase];
     
     SimpleModel *entity2 = [SimpleModel instanceWithPrimaryKey:@"a"];
     XCTAssertTrue(entity2.existsInDatabase);
-    XCTAssertTrue(entity2 != entity1);
+    XCTAssertTrue(entity2 != (__bridge SimpleModel *)(e1ptr));
+}
+
+- (void)testDateEncodingChangeMonitoring
+{
+    NSDate *date = [NSDate date];
+    SimpleModel *entity1 = [SimpleModel new];
+    entity1.date = date;
+    FCModelSaveResult saveResult1 = [entity1 save];
+    XCTAssertEqual(saveResult1, FCModelSaveSucceeded);
+    FCModelSaveResult saveResult2 = [entity1 save];
+    XCTAssertEqual(saveResult2, FCModelSaveNoChanges, @"Repeated saves should yield no changes");
+    
+    // actually changing the date should cause changes during save
+    entity1.date = [NSDate dateWithTimeIntervalSinceNow:1];
+    FCModelSaveResult saveResult3 = [entity1 save];
+    XCTAssertEqual(saveResult3, FCModelSaveSucceeded);
+}
+
+- (void)testMappingFieldInfo
+{
+    SimpleModel *entity = [SimpleModel new];
+    FCModelFieldInfo *info1 = [[entity class] infoForFieldName:@"uniqueID"];
+    FCModelFieldInfo *info2 = [[entity class] infoForFieldName:@"name"];
+    FCModelFieldInfo *info3 = [[entity class] infoForFieldName:@"lowercase"];
+    FCModelFieldInfo *info4 = [[entity class] infoForFieldName:@"mixedcase"];
+    FCModelFieldInfo *info5 = [[entity class] infoForFieldName:@"typelessTest"];
+    
+    XCTAssertEqual(info1.type, FCModelFieldTypeText);
+    XCTAssertEqual(info2.type, FCModelFieldTypeText);
+    XCTAssertEqual(info3.type, FCModelFieldTypeText);
+    XCTAssertEqual(info4.type, FCModelFieldTypeInteger);
+    XCTAssertEqual(info5.type, FCModelFieldTypeOther);
 }
 
 #pragma mark - Helper methods
@@ -85,18 +121,17 @@
             if (! [db executeUpdate:
                    @"CREATE TABLE SimpleModel ("
                    @"    uniqueID     TEXT PRIMARY KEY,"
-                   @"    name         TEXT"
+                   @"    name         TEXT,"
+                   @"    date         DATETIME,"
+                   @"    lowercase         text,"
+                   @"    mixedcase         Integer,"
+                   @"    typelessTest"
                    @");"
                    ]) failedAt(1);
             *schemaVersion = 1;
         }
         [db commit];
     }];
-}
-
-- (void)closeDatabase
-{
-    [FCModel closeDatabase];
 }
 
 - (NSString *)dbPath

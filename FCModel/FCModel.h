@@ -93,8 +93,8 @@ typedef NS_ENUM(NSInteger, FCModelSaveResult) {
 // CRUD basics
 + (instancetype)instanceWithPrimaryKey:(id)primaryKeyValue; // will create if nonexistent
 + (instancetype)instanceWithPrimaryKey:(id)primaryKeyValue createIfNonexistent:(BOOL)create; // will return nil if nonexistent
-- (FCModelSaveResult)revertUnsavedChanges;
-- (FCModelSaveResult)revertUnsavedChangeToFieldName:(NSString *)fieldName;
+- (void)revertUnsavedChanges;
+- (void)revertUnsavedChangeToFieldName:(NSString *)fieldName;
 - (FCModelSaveResult)delete;
 - (FCModelSaveResult)save;
 + (void)saveAll; // Resolved by class: call on FCModel to save all, on a subclass to save just those and their subclasses, etc.
@@ -167,12 +167,6 @@ typedef NS_ENUM(NSInteger, FCModelSaveResult) {
 //
 + (id)primaryKeyValueForNewInstance;
 
-// A bit redundant with KVO, but friendlier to multi-level subclassing, and only called for
-//  meaningful changes (not setting to same value, or initially loading from the database)
-//  on non-primary-key database columns.
-//
-- (void)didChangeValueForFieldName:(NSString *)fieldName fromValue:(id)oldValue toValue:(id)newValue;
-
 // Subclasses can customize how properties are serialized for the database.
 //
 // FCModel automatically handles numeric primitives, NSString, NSNumber, NSData, NSURL, NSDate, NSDictionary, and NSArray.
@@ -230,6 +224,21 @@ typedef NS_ENUM(NSInteger, FCModelSaveResult) {
 //  anyway, so you might as well have read-only access to it if it can help you avoid some code. (I've already needed it.)
 //
 + (FCModelFieldInfo *)infoForFieldName:(NSString *)fieldName;
+
+// Closing the database is not necessary in most cases. Only close it if you need to, such as if you need to delete and recreate
+//  the database file. Caveats:
+//     - Any FCModel call after closing will bizarrely fail until you call openDatabaseAtPath: again.
+//     - Any FCModel instances retained by any other parts of your code at the time of closing will become abandoned and untracked.
+//        The uniqueness guarantee will be broken, and operations on those instances will have undefined behavior. You really don't
+//        want this, and it may raise an exception in the future.
+//
+//        Until then, having any resident FCModel instances at the time of closing the database will result in scary console warnings
+//        and a return value of NO, which you should take as a condescending judgment and should fix immediately.
+//
+// Returns YES if there were no resident FCModel instances.
+//
++ (BOOL)closeDatabase;
+
 @end
 
 
